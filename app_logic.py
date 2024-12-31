@@ -47,9 +47,14 @@ class AppLogic():
         self.midi_path = midi_path
         self.midi_data = pm.PrettyMIDI(midi_path)
         self.instruments = self.midi_data.instruments
-        
+        print(len(self.instruments))
         self.set_default_settings()
         self.process_midi() # processing midi
+        
+    def reset(self):
+        self.midi_path = ''
+        self.midi_data = None
+        self.instruments = []
         
     
     def set_display_width(self, display_width):
@@ -77,6 +82,7 @@ class AppLogic():
         self.set_line_x(600)
         self.set_colour(bg_colour_2)
 
+    # def delete_instrument(self, )
     def process_midi(self):
         
         #setting initial bpm, its just for note generation not too important
@@ -139,6 +145,8 @@ class AppLogic():
 
 
     def generate_vid(self):
+        pg.quit()
+        pg.init()
         position = 0
         num_pitches = 110
         clock = pg.time.Clock()

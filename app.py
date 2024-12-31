@@ -153,7 +153,7 @@ instrument_wrapper <- Name label widget + button_wrapper
 class Instrument(QWidget):
     def __init__(self, name, instrument, current_project):
         super().__init__()
-
+        
         self.instrument = instrument
         self.current_project = current_project
         # Setting Background Colour
@@ -163,6 +163,8 @@ class Instrument(QWidget):
 
         # palette.setColor(QPalette.Window, QColor("#C5C5C5"))  #  grey background
         self.setPalette(palette)
+
+        
 
         # initialize speed_slider for instrument
         self.speed_slider = Speed_Slider(self.instrument)
@@ -198,6 +200,9 @@ class Instrument(QWidget):
         self.speed_button.clicked.connect(lambda: self.speed_slider.show_slider(self.speed_button)) # another lambda function
         self.button_wrapper.addWidget(self.speed_button)
 
+
+
+
         # add button wrapper to instrument wrapper
         self.instrument_wrapper.addLayout(self.button_wrapper)
         self.setLayout(self.instrument_wrapper)
@@ -212,13 +217,15 @@ class Instrument(QWidget):
         instrument_menu = QMenu()
         move_up = QAction("Move Up", self)
         move_down = QAction("Move Down", self)
+        delete = QAction("Delete", self)
 
         # Connect actions to functions
         move_up.triggered.connect(lambda: self.move_up())
         move_down.triggered.connect(lambda: self.move_down() )
-
+        delete.triggered.connect(lambda: self.delete())
         instrument_menu.addAction(move_up)
         instrument_menu.addAction(move_down)
+        instrument_menu.addAction(delete)
         instrument_menu.exec(event.globalPos())
         pass
     
@@ -237,7 +244,7 @@ class Instrument(QWidget):
             parent_layout.removeWidget(widget_above)
             
             parent_layout.insertWidget(current_instrument_index-1, self) 
-            parent_layout.insertWidget(current_instrument_index, widget_above)
+            parent_layout.insertWidget(current_instrument_index, widget_above) 
            
 
             #---------------- the other stuff
@@ -279,7 +286,15 @@ class Instrument(QWidget):
 
 
         else:
-            print("can't move up")
+            print("can't move down")
+    
+    def delete(self):
+        # self.current_project.instruments.
+        self.current_project.instruments.remove(self.instrument)
+        self.deleteLater()
+        
+        
+        pass
         
 
 
