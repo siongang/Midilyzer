@@ -17,6 +17,8 @@ class MainWindow(QMainWindow):
         # Get the directory where the current script is located
         self.project_directory = os.path.dirname(os.path.abspath(__file__))
 
+        self.current_project = ""
+
         self.setWindowTitle("Midi Visualizer")
         self.resize(1280,720)
 
@@ -115,7 +117,12 @@ class MainWindow(QMainWindow):
         print(destination_path)
         shutil.move(source_file, destination_path) #Moving the file to database
 
-        self.current_project = AppLogic(destination_path)
+        
+        if self.current_project == "":
+            self.current_project = AppLogic(destination_path)
+        else:
+            self.current_project.merge_midi(destination_path)
+            self.generate_button.clicked.disconnect()
         self.current_project.process_midi()
         
         '''

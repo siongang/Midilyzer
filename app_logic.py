@@ -82,7 +82,7 @@ class AppLogic():
         self.set_line_x(600)
         self.set_colour(bg_colour_2)
 
-    # def delete_instrument(self, )
+    #P
     def process_midi(self):
         
         #setting initial bpm, its just for note generation not too important
@@ -137,7 +137,15 @@ class AppLogic():
                     if min_pitch > note.pitch:
                         min_pitch = note.pitch
 
-
+    # Merging new midi files to current project
+    def merge_midi(self, new_midi_path):
+        
+        new_midi_data = pm.PrettyMIDI(new_midi_path)
+        new_instruments = new_midi_data.instruments
+        print(len(new_instruments))
+        # self.set_default_settings()
+        for instrument in new_midi_data.instruments:
+            self.instruments.append(instrument)
 
 
     def set_line_x(self, line_x):
