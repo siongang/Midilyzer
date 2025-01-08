@@ -84,7 +84,7 @@ class MainWindow(QMainWindow):
 
         # CLEAR BUTTON
         self.clear_instruments_button = QPushButton("clear")
-        self.clear_instruments_button.clicked.connect(self.clear_instruments)
+        self.clear_instruments_button.clicked.connect(self.clear_clicked)
         self.control_layout.addWidget(self.clear_instruments_button)
         
         ###################################################################
@@ -130,8 +130,8 @@ class MainWindow(QMainWindow):
         destination_path = os.path.join(destination_path, file_basename)
 
 
-        print(source_file)
-        print(destination_path)
+        # print(source_file)
+        # print(destination_path)
         shutil.move(source_file, destination_path) #Moving the file to database
 
         
@@ -179,7 +179,15 @@ class MainWindow(QMainWindow):
         file_opened = True
     
 
-  
+    def clear_clicked(self):
+        self.clear_instruments()
+        self.preview_screen.clear()
+        # Reset the palette to the default system-defined colors
+        default_palette = self.style().standardPalette()  # Get the default system palette
+        self.instrument_scroll_container.setPalette(default_palette)
+        
+
+
 
     def clear_instruments(self):
 
@@ -361,21 +369,13 @@ class Preview_Screen(QLabel):
             height,
             QImage.Format_RGB888
         )
-
-
-        # black_frame = np.zeros((233,233, 3), dtype=np.uint8)
-
-        # # Create QImage from the NumPy array
-        # qimage = QImage(
-        #     black_frame.data,
-        #    100,
-        #     200,
-        #     black_frame.strides[0],  # Bytes per line
-        #     QImage.Format_RGB888
-        # )
+        
 
         pixmap = QPixmap.fromImage(qimage)
         self.setPixmap(pixmap)
+    
+    def clear_screen(self):
+        self.clear()
 
 
 
