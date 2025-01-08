@@ -3,8 +3,8 @@ import os
 import shutil
 from PySide6 import QtCore, QtGui, QtWidgets
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QApplication, QMainWindow, QMenu, QWidget,QLabel,QDialog, QLineEdit, QHBoxLayout, QVBoxLayout, QGridLayout, QToolBar, QPushButton, QFileDialog
-from PySide6.QtGui import QPalette, QColor, QAction
+from PySide6.QtWidgets import QApplication, QMainWindow, QMenu, QSlider, QWidget,QLabel,QDialog, QLineEdit, QHBoxLayout, QVBoxLayout, QGridLayout, QToolBar, QPushButton, QFileDialog
+from PySide6.QtGui import QPalette, QColor, QAction, QPixmap, QImage
 from app_logic import AppLogic
 
 import helper
@@ -62,26 +62,43 @@ class MainWindow(QMainWindow):
         self.scroll_area.setWidget(self.instrument_scroll_container)
         
 
-        # the other layouts in preview panel
+        # Preview_layout holds the live player and player controls
         self.preview_layout = QVBoxLayout()
+
+        self.preview_screen = Preview_Screen()
+        self.preview_slider = Preview_Slider()
+
+        self.preview_layout.addWidget(self.preview_screen)
+        self.preview_layout.addWidget(self.preview_slider)
+
+        # Control Layout holds easy access to more general song controls
         self.control_layout = QHBoxLayout()
         
-
+        # BG COLOUR BUTTON
         self.bg_colour_button=QPushButton("bg colour")
-    
         self.control_layout.addWidget(self.bg_colour_button)
-
+        
+        # GENERATE BUTTON
         self.generate_button = QPushButton("generate")
-        
         self.control_layout.addWidget(self.generate_button)
-        self.preview_panel.addLayout(self.preview_layout)
-        self.preview_panel.addLayout(self.control_layout)
 
-        self.preview_layout.addWidget(Color('red'))
-
-        self.preview_panel.addLayout(self.preview_layout)
+        # CLEAR BUTTON
+        self.clear_instruments_button = QPushButton("clear")
+        self.clear_instruments_button.clicked.connect(self.clear_instruments)
+        self.control_layout.addWidget(self.clear_instruments_button)
         
+        ###################################################################
+
+        self.preview_panel.addLayout(self.preview_layout)
         self.preview_panel.addLayout(self.control_layout)
+
+        # self.preview_layout.addWidget(Color('red'))
+        # self.preview_layout.addWidget(Color('blue'))
+
+
+        self.preview_panel.addLayout(self.preview_layout)
+        self.preview_panel.addLayout(self.control_layout)
+
         # self.preview_panel.setLayout(self.preview_panel)
 
         # self.instruments_panel.addWidget(Color('blue'))
@@ -120,9 +137,12 @@ class MainWindow(QMainWindow):
         
         if self.current_project == "":
             self.current_project = AppLogic(destination_path)
+        elif self.current_project.midi_data == None:
+            self.current_project = AppLogic(destination_path)
         else:
             self.current_project.merge_midi(destination_path)
             self.generate_button.clicked.disconnect()
+            
         self.current_project.process_midi()
         
         '''
@@ -146,13 +166,32 @@ class MainWindow(QMainWindow):
         self.bg_colour_widget = Colour_Widget(self.current_project)
         self.bg_colour_button.clicked.connect(lambda: self.bg_colour_widget.show_colour_widget(self.instrument_scroll_container))
         
-        # self.scroll_area.setWidget(self.instrument_scroll_container)
+        
+        self.preview_screen.update_frame(self.current_project.generate_frame(30))
+
+        self.preview_slider.valueChanged.connect(lambda pos:
+            self.preview_screen.update_frame(
+                self.current_project.generate_frame(pos),
+             
+            )
+        )
         
         file_opened = True
-        # self.current_project.generate_vid()
-        # self.instruments_panel.update()    
-        # self.setLayout(self.instruments_panel)
-            # self.instruments_panel.addWidget(Color('red'))
+    
+
+  
+
+    def clear_instruments(self):
+
+        for i in reversed(range(self.instruments_panel.count())):
+            print(i)
+            widget = self.instruments_panel.itemAt(i).widget()
+            if widget:
+                widget.deleteLater()
+                print("deleted")
+
+        self.current_project.reset()
+
 '''
 instrument_wrapper <- Name label widget + button_wrapper
 
@@ -263,11 +302,7 @@ class Instrument(QWidget):
         else:
             print("can't move up")
 
-
-
-        
-    
-    
+ 
     def move_down(self):
         parent_widget = self.parentWidget()
         parent_layout = parent_widget.layout()
@@ -303,9 +338,61 @@ class Instrument(QWidget):
         
         pass
         
+import numpy as np
+class Preview_Screen(QLabel):
+    def __init__(self, parent=None):
+        super().__init__(parent) # initializes Label object
+        self.setFixedSize(640,360)
+        self.setScaledContents(True)
+
+    def update_frame(self, raw_frame):
+        
+        raw_frame = np.transpose(raw_frame, (1, 0, 2))
+        raw_frame = np.ascontiguousarray(raw_frame, dtype=np.uint8)
+        height, width, _ = raw_frame.shape
+
+        # raw_data = np.zeros
+        # print(raw_frame[1])
+
+        # QImage(const uchar *data, int width, int height, QImage.Format format)
+        qimage = QImage(
+            raw_frame.data,
+            width, 
+            height,
+            QImage.Format_RGB888
+        )
+
+
+        # black_frame = np.zeros((233,233, 3), dtype=np.uint8)
+
+        # # Create QImage from the NumPy array
+        # qimage = QImage(
+        #     black_frame.data,
+        #    100,
+        #     200,
+        #     black_frame.strides[0],  # Bytes per line
+        #     QImage.Format_RGB888
+        # )
+
+        pixmap = QPixmap.fromImage(qimage)
+        self.setPixmap(pixmap)
 
 
 
+class Preview_Slider(QSlider):
+    def __init__(self, parent=None):
+        super().__init__(Qt.Horizontal, parent)
+        self.setMinimum(0)
+        self.setMaximum(100)
+        self.setFixedSize(300, 200)  # Set QLabel to a fixed size
+
+        self.valueChanged.connect(lambda p: self.set_slider(p)) # lambda function is a shorter way to define function without having to define one
+    
+    def set_slider(self, p):
+        self.value = p
+        
+        print(self.value)
+        
 
             
 '''
@@ -384,7 +471,7 @@ class Speed_Slider(QWidget):
         self.speed = 1
         instrument.speed = self.speed
 
-        self.speed_slider.sliderMoved.connect(lambda p: self.set_slider(p, instrument)) # lambda function to take in multipel arguments still a bit confused
+        self.speed_slider.valueChanged.connect(lambda p: self.set_slider(p, instrument)) # lambda function to take in multipel arguments still a bit confused
     
     def set_slider(self, p, instrument):
         self.speed = self.slider_values[p]

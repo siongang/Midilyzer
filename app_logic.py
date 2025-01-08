@@ -3,6 +3,8 @@ import random
 import utils
 import vid
 import pretty_midi as pm
+import numpy as np
+
 display_width = 1280
 display_height = 720
 vid.constructor(display_width,display_height)
@@ -40,17 +42,21 @@ note_colours2 = [
 bg_colour = (220, 230, 240)
 bg_colour_2 = (245, 222, 179)
 
-
+'''Changes to do: Make applogic not dependent on midi path, only midi data'''
 class AppLogic():
 
     def __init__(self, midi_path):
         self.midi_path = midi_path
         self.midi_data = pm.PrettyMIDI(midi_path)
         self.instruments = self.midi_data.instruments
-        print(len(self.instruments))
+        # print(len(self.instruments))
         self.set_default_settings()
         self.process_midi() # processing midi
+        self.set_total_duration( max(note.end for instrument in self.instruments for note in instrument.notes)) # generator expression, gets the max val of note.end
         
+        pg.init()
+        # self.
+
     def reset(self):
         self.midi_path = ''
         self.midi_data = None
@@ -67,6 +73,8 @@ class AppLogic():
         self.note_length = note_length
     def set_bpm(self, bpm):
         self.bpm = bpm
+    def set_total_duration(self, total_duration):
+        self.total_duration = total_duration
 
     def set_instrument_colour(instrument, colour):
         pass    
@@ -207,7 +215,7 @@ class AppLogic():
             
                     # print(note.click_status)
 
-                    if rect_x < 605 and rect_x > line_x-rect_width - 500:
+                    if rect_x < line_x + 5 and rect_x > line_x-rect_width - 500:
                         if note.click_status != 4: # 4 = done clicking
 
                             if note.click_status == 3: # 3 = clicked
@@ -219,7 +227,7 @@ class AppLogic():
 
                             elif note.click_status == 2: # 2=  clicking
                                 rect_y += note.y_pos
-                                if rect_x <600-rect_width *1.2:
+                                if rect_x <line_x-rect_width *1.2:
                                     note.click_status = 3
                                     
                         
@@ -232,7 +240,7 @@ class AppLogic():
                                 
                             
                             elif note.click_status == 0: # 0 = not clicked
-                                if rect_x <= 600: 
+                                if rect_x <= line_x: 
                                     note.click_status = 1 
                                     
                     if note.click_status in [1,2,3]: # if note in process of getting clicked
@@ -268,3 +276,67 @@ class AppLogic():
         pg.quit()            # Quit Pygame
     
             
+    def generate_frame(self, stamp):
+        
+        # do some errotrapping in case pg is already running
+
+        pg.init()
+        num_pitches = 110
+        clock = pg.time.Clock()
+        # frame_screen = pg.display.set_mode((self.display_width, self.display_height))
+        frame_screen = pg.Surface((self.display_width, self.display_height))
+
+        line_x = self.line_x
+        bpm = self.bpm
+        note_length = self.note_length
+        starting_position = self.starting_position
+
+        frame_screen.fill(self.colour)
+
+        # print(f"{self.total_duration} totla duration ")
+
+        total_duration_sec = self.total_duration*60
+        current_time = (stamp/100)*total_duration_sec
+        # print(f"{current_time} is current time")
+
+
+        # multiply algo by the time stamp in percentage * total duration of song
+        position = note_length*(bpm/60) * current_time/40
+
+        # print(f"{position} POSITION")
+        for instrument in self.instruments:
+            instrument_colour = instrument.colour
+            instrument_speed = instrument.speed
+            temp_length = note_length*instrument_speed
+            
+            for note in instrument.notes:
+                start = note.start
+                end = note.end
+                pitch = note.pitch
+                velocity = note.velocity
+                note_colour = instrument_colour
+                note_tempo = bpm
+                # note properties
+                rect_width = (end-start)*temp_length * (note_tempo/60)*0.9 # - 4 or soemthing for aesthetic reasons
+                rect_height = display_height/num_pitches
+                rect_x = line_x + (starting_position-line_x)*instrument_speed+ start*temp_length * (note_tempo/60) - position*instrument_speed
+                rect_y = (num_pitches - pitch - 1) * rect_height
+            
+                if note.click_status in [1,2,3]: # if note in process of getting clicked
+                    note_colour = utils.lighten_colour(instrument_colour,0.2) # lighten the colour
+                else:
+                    note_colour = instrument_colour 
+
+                # rect_color = (204, 51, 51)  # Red color
+                rect_color = note_colour
+
+                pg.draw.rect(frame_screen, rect_color, (rect_x, rect_y, rect_width, rect_height))
+                # pg.display.update(pg.Rect(rect_x, rect_y, rect_width, rect_height))
+
+        # raw_frame = pg.image.tostring(frame_screen, "RGB")
+        raw_frame = pg.surfarray.array3d(frame_screen)
+           
+
+        return raw_frame
+
+        
