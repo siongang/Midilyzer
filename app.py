@@ -22,6 +22,10 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Midi Visualizer")
         self.resize(1280,720)
 
+        # Storing lists of dynamic parts of the app
+        self.dynamic_widgets = []
+        self.dynamic_buttons = []
+
         # making a menu bar
         menu = self.menuBar()
 
@@ -75,18 +79,19 @@ class MainWindow(QMainWindow):
         self.control_layout = QHBoxLayout()
         
         # BG COLOUR BUTTON
-        self.bg_colour_button=QPushButton("bg colour")
+        self.bg_colour_button = QPushButton("bg colour")
         self.control_layout.addWidget(self.bg_colour_button)
+        self.dynamic_buttons.append(self.bg_colour_button)
         
         # GENERATE BUTTON
         self.generate_button = QPushButton("generate")
         self.control_layout.addWidget(self.generate_button)
+        self.dynamic_buttons.append(self.generate_button)
 
         # CLEAR BUTTON
         self.clear_instruments_button = QPushButton("clear")
-        self.clear_instruments_button.clicked.connect(self.clear_clicked)
         self.control_layout.addWidget(self.clear_instruments_button)
-        
+        self.dynamic_buttons.append(self.clear_instruments_button)
         ###################################################################
 
         self.preview_panel.addLayout(self.preview_layout)
@@ -110,6 +115,10 @@ class MainWindow(QMainWindow):
         self.widget = QWidget()
         self.widget.setLayout(self.main_window)
         self.setCentralWidget(self.widget)
+
+
+
+
 
     '''
     When we open a new file we are essentially starting the project so lots of things are in
@@ -164,6 +173,7 @@ class MainWindow(QMainWindow):
         self.instrument_scroll_container.setPalette(palette)
 
         self.bg_colour_widget = Colour_Widget(self.current_project)
+        self.dynamic_widgets.append(self.bg_colour_widget)
         self.bg_colour_button.clicked.connect(lambda: self.bg_colour_widget.show_colour_widget(self.instrument_scroll_container))
         
         
@@ -175,6 +185,9 @@ class MainWindow(QMainWindow):
              
             )
         )
+
+        self.clear_instruments_button.clicked.connect(self.clear_clicked)
+
         
         file_opened = True
     
@@ -185,6 +198,14 @@ class MainWindow(QMainWindow):
         # Reset the palette to the default system-defined colors
         default_palette = self.style().standardPalette()  # Get the default system palette
         self.instrument_scroll_container.setPalette(default_palette)
+
+        for dyn_widget in self.dynamic_widgets:
+            if dyn_widget:
+                dyn_widget.deleteLater()
+                
+        for dyn_button in self.dynamic_buttons:
+            if dyn_button:
+                dyn_button.clicked.disconnect()
         
 
 
