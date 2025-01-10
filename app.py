@@ -17,104 +17,115 @@ class MainWindow(QMainWindow):
         # Get the directory where the current script is located
         self.project_directory = os.path.dirname(os.path.abspath(__file__))
 
-        self.current_project = ""
-
-        self.setWindowTitle("Midi Visualizer")
-        self.resize(1280,720)
+        self.current_project = None
 
         # Storing lists of dynamic parts of the app
         self.dynamic_widgets = []
         self.dynamic_buttons = []
 
-        # making a menu bar
-        menu = self.menuBar()
 
-        # making an option in the menu bar
-        file_menu = menu.addMenu("&File")
-        file_menu.addSeparator()
+
+
+        self.main_window = None
+
+        self.instrument_scroll_container = None
+        self.tools_container = None
+
+        self.setup_window()
+        self.create_menu_bar()
+        self.setup_layouts()
+        self.setup_scroll_area(self.instrument_scroll_container)
+        self.setup_preview_panel(self.tools_container)
+        self.setup_control_panel(self.tools_container)
+
+        self.setup_central_widget(self.main_window)
+
+
+
+    def setup_window(self):
+        self.setWindowTitle("Midi Visualizer")
+        self.resize(1280,720)
+
+    def create_menu_bar(self):
+        self.menu = self.menuBar()
+        self.file_menu = self.menu.addMenu("&File")
         
-        # menu bar actions
         open_action = QAction("&Open", self)
         open_action.setShortcut("Ctrl+O")
         open_action.triggered.connect(self.open_file_dialog)
-
-        # add open action to file option in menu bar
-        file_menu.addAction(open_action)
-       
-
-        # Layout stuff
-        self.main_window = QHBoxLayout()
-        self.preview_panel = QVBoxLayout()
-        #----------------------------------------------------
-
-        ''' 
-        scroll area -> instrument scroll container widget -> instrument panel
-        '''
-        self.instrument_scroll_container = QWidget()
-
-        self.instruments_panel = QVBoxLayout(self.instrument_scroll_container)
-        print(self.instrument_scroll_container.layout())
-        # set allignment to top down 
-        self.instruments_panel.setAlignment(Qt.AlignTop) 
         
-        # parent area
+        self.file_menu.addAction(open_action)
+        # file_menu.addSeperator()
+
+    def setup_layouts(self):
+
+        self.main_window = QHBoxLayout()
+        self.instrument_scroll_container = QVBoxLayout()
+        self.tools_container = QVBoxLayout()
+
+
+    '''
+    (L) {instrument_scroll_container} <- (W) scroll_area <- (W) scroll_contents [(L) instrument_content_layout]
+    '''
+    def setup_scroll_area(self, parent):
+
+        self.instrument_scroll_contents = QWidget()
+
+        self.instrument_content_layout = QVBoxLayout()
+        self.instrument_content_layout.setAlignment(Qt.AlignTop)
+        self.instrument_scroll_contents.setLayout(self.instrument_content_layout)
+
+
         self.scroll_area = QtWidgets.QScrollArea()
         self.scroll_area.setWidgetResizable(True)
 
-        self.instrument_scroll_container.setLayout(self.instruments_panel)
+        self.scroll_area.setWidget(self.instrument_scroll_contents)
 
-        self.scroll_area.setWidget(self.instrument_scroll_container)
+        parent.setWidget(self.scroll_area)
+    
+
+    '''
+    (L) {tools_container} <- (L) preview_panel <- [(W) preview_screen, (W) preview_slider]
+    '''
+    def setup_preview_panel(self, parent):
+        self.preview_panel = QVBoxLayout()
         
-
-        # Preview_layout holds the live player and player controls
-        self.preview_layout = QVBoxLayout()
-
         self.preview_screen = Preview_Screen()
         self.preview_slider = Preview_Slider()
 
-        self.preview_layout.addWidget(self.preview_screen)
-        self.preview_layout.addWidget(self.preview_slider)
+        self.preview_panel.addWidget(self.preview_screen)
+        self.preview_panel.addWidget(self.preview_slider)
 
-        # Control Layout holds easy access to more general song controls
-        self.control_layout = QHBoxLayout()
+        self.preview_panel.addLayout(parent)
+
+    '''
+    (L) {tools_container} <- (L) control_panel <- [buttons]
+    '''
+    def setup_control_panel(self, parent):
+        self.control_panel = QHBoxLayout()
         
         # BG COLOUR BUTTON
         self.bg_colour_button = QPushButton("bg colour")
-        self.control_layout.addWidget(self.bg_colour_button)
-        self.dynamic_buttons.append(self.bg_colour_button)
-        
+        self.control_panel.addWidget(self.bg_colour_button)
+                
         # GENERATE BUTTON
         self.generate_button = QPushButton("generate")
-        self.control_layout.addWidget(self.generate_button)
-        self.dynamic_buttons.append(self.generate_button)
-
+        self.control_panel.addWidget(self.generate_button)
+        
         # CLEAR BUTTON
         self.clear_instruments_button = QPushButton("clear")
-        self.control_layout.addWidget(self.clear_instruments_button)
-        self.dynamic_buttons.append(self.clear_instruments_button)
-        ###################################################################
-
-        self.preview_panel.addLayout(self.preview_layout)
-        self.preview_panel.addLayout(self.control_layout)
-
-        # self.preview_layout.addWidget(Color('red'))
-        # self.preview_layout.addWidget(Color('blue'))
-
-
-        self.preview_panel.addLayout(self.preview_layout)
-        self.preview_panel.addLayout(self.control_layout)
-
-        # self.preview_panel.setLayout(self.preview_panel)
-
-        # self.instruments_panel.addWidget(Color('blue'))
+        self.control_panel.addWidget(self.clear_instruments_button)
         
-        # self.main_window.addLayout(self.instruments_panel)
-        self.main_window.addWidget(self.scroll_area)
-        self.main_window.addLayout(self.preview_panel)
+        self.dynamic_buttons.append(self.generate_button)
+        self.dynamic_buttons.append(self.clear_instruments_button)
 
-        self.widget = QWidget()
-        self.widget.setLayout(self.main_window)
-        self.setCentralWidget(self.widget)
+        self.control_panel.addLayout(parent)
+
+
+    def setup_central_widget(self, main_window):
+        self.central_widget = QWidget()
+        self.central_widget.setLayout(main_window)
+        self.setCentralWidget(self.central_widget)
 
 
 
@@ -165,7 +176,8 @@ class MainWindow(QMainWindow):
         '''Colour things'''
         # connect generate button to app logic generate code
         self.generate_button.clicked.connect(self.current_project.generate_vid)
-        
+        self.dynamic_buttons.append(self.generate_button)
+
         # setting the instrument scroll container colour!!
         palette = self.palette()
         palette.setColor(QPalette.Window, QColor(*self.current_project.colour))  #  grey background
@@ -175,7 +187,7 @@ class MainWindow(QMainWindow):
         self.bg_colour_widget = Colour_Widget(self.current_project)
         self.dynamic_widgets.append(self.bg_colour_widget)
         self.bg_colour_button.clicked.connect(lambda: self.bg_colour_widget.show_colour_widget(self.instrument_scroll_container))
-        
+        self.dynamic_buttons.append(self.bg_colour_button)
         
         self.preview_screen.update_frame(self.current_project.generate_frame(30))
 
@@ -187,6 +199,7 @@ class MainWindow(QMainWindow):
         )
 
         self.clear_instruments_button.clicked.connect(self.clear_clicked)
+        self.dynamic_buttons.append(self.clear_instruments_button)
 
         
         file_opened = True
@@ -199,13 +212,20 @@ class MainWindow(QMainWindow):
         default_palette = self.style().standardPalette()  # Get the default system palette
         self.instrument_scroll_container.setPalette(default_palette)
 
-        for dyn_widget in self.dynamic_widgets:
-            if dyn_widget:
-                dyn_widget.deleteLater()
-                
         for dyn_button in self.dynamic_buttons:
-            if dyn_button:
+            try:
+                dyn_button.clicked.disconnect()  # Disconnect the signal
+            except TypeError:
+                pass  # Ignore if already disconnected
+        self.dynamic_buttons.clear()  # Clear the list after disconnecting
+
+        
+        for dyn_button in self.dynamic_buttons:
+            try:    
                 dyn_button.clicked.disconnect()
+            except TypeError:
+                pass
+        self.dynamic_buttons.clear() 
         
 
 
