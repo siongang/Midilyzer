@@ -17,19 +17,17 @@ class MainWindow(QMainWindow):
         # Get the directory where the current script is located
         self.project_directory = os.path.dirname(os.path.abspath(__file__))
 
-        self.current_project = None
+        self.current_project = ""
 
         # Storing lists of dynamic parts of the app
         self.dynamic_widgets = []
         self.dynamic_buttons = []
 
+        # UI Set Up starts
+        # self.main_window = None
 
-
-
-        self.main_window = None
-
-        self.instrument_scroll_container = None
-        self.tools_container = None
+        # self.instrument_scroll_container = None
+        # self.tools_container = None
 
         self.setup_window()
         self.create_menu_bar()
@@ -40,8 +38,7 @@ class MainWindow(QMainWindow):
 
         self.setup_central_widget(self.main_window)
 
-
-
+    # Window Properties
     def setup_window(self):
         self.setWindowTitle("Midi Visualizer")
         self.resize(1280,720)
@@ -57,8 +54,8 @@ class MainWindow(QMainWindow):
         self.file_menu.addAction(open_action)
         # file_menu.addSeperator()
 
+    # Main and Relevent Layouts
     def setup_layouts(self):
-
         self.main_window = QHBoxLayout()
         self.instrument_scroll_container = QVBoxLayout()
         self.tools_container = QVBoxLayout()
@@ -81,7 +78,7 @@ class MainWindow(QMainWindow):
 
         self.scroll_area.setWidget(self.instrument_scroll_contents)
 
-        parent.setWidget(self.scroll_area)
+        parent.addWidget(self.scroll_area)
     
 
     '''
@@ -96,7 +93,7 @@ class MainWindow(QMainWindow):
         self.preview_panel.addWidget(self.preview_screen)
         self.preview_panel.addWidget(self.preview_slider)
 
-        self.preview_panel.addLayout(parent)
+        parent.addLayout(self.preview_panel)
 
     '''
     (L) {tools_container} <- (L) control_panel <- [buttons]
@@ -119,14 +116,17 @@ class MainWindow(QMainWindow):
         self.dynamic_buttons.append(self.generate_button)
         self.dynamic_buttons.append(self.clear_instruments_button)
 
-        self.control_panel.addLayout(parent)
+        parent.addLayout(self.control_panel)
 
 
     def setup_central_widget(self, main_window):
+
+        self.main_window.addLayout(self.instrument_scroll_container)
+        self.main_window.addLayout(self.tools_container)
+        
         self.central_widget = QWidget()
         self.central_widget.setLayout(main_window)
         self.setCentralWidget(self.central_widget)
-
 
 
 
@@ -170,7 +170,7 @@ class MainWindow(QMainWindow):
         '''
         for instr in self.current_project.instruments:
             # self.instruments_panel.addLayout(QVBoxLayout())
-            self.instruments_panel.addWidget(Instrument(instr.name, instr, self.current_project))
+            self.instrument_content_layout.addWidget(Instrument(instr.name, instr, self.current_project))
 
 
         '''Colour things'''
@@ -182,7 +182,7 @@ class MainWindow(QMainWindow):
         palette = self.palette()
         palette.setColor(QPalette.Window, QColor(*self.current_project.colour))  #  grey background
         # palette.setColor(QPalette.Window, QColor("#C5C5C5"))  #  grey background
-        self.instrument_scroll_container.setPalette(palette)
+        self.instrument_scroll_contents.setPalette(palette)
 
         self.bg_colour_widget = Colour_Widget(self.current_project)
         self.dynamic_widgets.append(self.bg_colour_widget)
@@ -210,7 +210,7 @@ class MainWindow(QMainWindow):
         self.preview_screen.clear()
         # Reset the palette to the default system-defined colors
         default_palette = self.style().standardPalette()  # Get the default system palette
-        self.instrument_scroll_container.setPalette(default_palette)
+        self.instrument_scroll_contents.setPalette(default_palette)
 
         for dyn_button in self.dynamic_buttons:
             try:
@@ -232,9 +232,9 @@ class MainWindow(QMainWindow):
 
     def clear_instruments(self):
 
-        for i in reversed(range(self.instruments_panel.count())):
+        for i in reversed(range(self.instrument_content_layout.count())):
             print(i)
-            widget = self.instruments_panel.itemAt(i).widget()
+            widget = self.instrument_content_layout.itemAt(i).widget()
             if widget:
                 widget.deleteLater()
                 print("deleted")
@@ -432,7 +432,7 @@ class Preview_Slider(QSlider):
     def set_slider(self, p):
         self.value = p
         
-        print(self.value)
+        # print(self.value)
         
 
             
