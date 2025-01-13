@@ -2,10 +2,11 @@ import sys
 import os
 import shutil
 from PySide6 import QtCore, QtGui, QtWidgets
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import QApplication, QMainWindow, QMenu, QSlider, QWidget,QLabel,QDialog, QLineEdit, QHBoxLayout, QVBoxLayout, QGridLayout, QToolBar, QPushButton, QFileDialog
 from PySide6.QtGui import QPalette, QColor, QAction, QPixmap, QImage
 from app_logic import AppLogic
+import numpy as np
 
 import helper
 
@@ -120,7 +121,6 @@ class MainWindow(QMainWindow):
 
 
     def setup_central_widget(self, main_window):
-
         self.main_window.addLayout(self.instrument_scroll_container)
         self.main_window.addLayout(self.tools_container)
         
@@ -146,7 +146,7 @@ class MainWindow(QMainWindow):
 
         # get the file name without the directory paths
         file_basename = os.path.basename(source_file)
-        destination_path = os.path.join(project_directory,save_folder)
+        destination_path = os.path.join(project_directory, save_folder)
         destination_path = os.path.join(destination_path, file_basename)
 
 
@@ -170,14 +170,16 @@ class MainWindow(QMainWindow):
         '''
         for instr in self.current_project.instruments:
             # self.instruments_panel.addLayout(QVBoxLayout())
-            self.instrument_content_layout.addWidget(Instrument(instr.name, instr, self.current_project))
+            instr_widget = Instrument(instr.name, instr, self.current_project)
+            
+            instr_widget.refreshPreview.connect(lambda: self.preview_screen.update_frame(
+            self.current_project.generate_frame(self.preview_slider.value())
+            ))
 
+            self.instrument_content_layout.addWidget(instr_widget)
+           
 
         '''Colour things'''
-        # connect generate button to app logic generate code
-        self.generate_button.clicked.connect(self.current_project.generate_vid)
-        self.dynamic_buttons.append(self.generate_button)
-
         # setting the instrument scroll container colour!!
         palette = self.palette()
         palette.setColor(QPalette.Window, QColor(*self.current_project.colour))  #  grey background
@@ -186,7 +188,13 @@ class MainWindow(QMainWindow):
 
         self.bg_colour_widget = Colour_Widget(self.current_project)
         self.dynamic_widgets.append(self.bg_colour_widget)
-        self.bg_colour_button.clicked.connect(lambda: self.bg_colour_widget.show_colour_widget(self.instrument_scroll_container))
+        self.bg_colour_button.clicked.connect(lambda: self.bg_colour_widget.show_colour_widget(self.instrument_scroll_contents))
+       
+        self.bg_colour_widget.colourChanged.connect(lambda: self.preview_screen.update_frame(
+            self.current_project.generate_frame(self.preview_slider.value())
+            )
+        )
+            
         self.dynamic_buttons.append(self.bg_colour_button)
         
         self.preview_screen.update_frame(self.current_project.generate_frame(30))
@@ -201,7 +209,11 @@ class MainWindow(QMainWindow):
         self.clear_instruments_button.clicked.connect(self.clear_clicked)
         self.dynamic_buttons.append(self.clear_instruments_button)
 
-        
+         # connect generate button to app logic generate code
+        self.generate_button.clicked.connect(self.current_project.generate_vid)
+        self.dynamic_buttons.append(self.generate_button)
+
+
         file_opened = True
     
 
@@ -228,10 +240,7 @@ class MainWindow(QMainWindow):
         self.dynamic_buttons.clear() 
         
 
-
-
     def clear_instruments(self):
-
         for i in reversed(range(self.instrument_content_layout.count())):
             print(i)
             widget = self.instrument_content_layout.itemAt(i).widget()
@@ -246,11 +255,13 @@ instrument_wrapper <- Name label widget + button_wrapper
 
 '''
 class Instrument(QWidget):
+    refreshPreview = Signal()
     def __init__(self, name, instrument, current_project):
         super().__init__()
         
         self.instrument = instrument
         self.current_project = current_project
+        
         # Setting Background Colour
         self.setAutoFillBackground(True)
         palette = self.palette()
@@ -259,14 +270,13 @@ class Instrument(QWidget):
         # palette.setColor(QPalette.Window, QColor("#C5C5C5"))  #  grey background
         self.setPalette(palette)
 
-        
 
         # initialize speed_slider for instrument
         self.speed_slider = Speed_Slider(self.instrument)
 
         # initialize colour_widget for instrument
         self.colour_widget = Colour_Widget(self.instrument)
-
+        # self.colour_widget.colorChanged.connect(preview_screen.update_frame(self.current_project.generate_frame()))
         self.instrument_wrapper = QVBoxLayout()
         
 
@@ -295,16 +305,19 @@ class Instrument(QWidget):
         self.speed_button.clicked.connect(lambda: self.speed_slider.show_slider(self.speed_button)) # another lambda function
         self.button_wrapper.addWidget(self.speed_button)
 
-
-
-
         # add button wrapper to instrument wrapper
         self.instrument_wrapper.addLayout(self.button_wrapper)
         self.setLayout(self.instrument_wrapper)
         self.setFixedHeight(60)
         
+        self.colour_widget.colourChanged.connect(self.refresh_preview)
+        self.speed_slider.speedChanged.connect(self.refresh_preview)
+    
+    def refresh_preview(self):
+        print("refresh preview")
+        self.refreshPreview.emit()
+
     def mousePressEvent(self, event):
-        # Check if the left mouse button was clicked
         if event.button() == Qt.RightButton:
             self.instrument_right_click_menu(event)
 
@@ -322,10 +335,7 @@ class Instrument(QWidget):
         instrument_menu.addAction(move_down)
         instrument_menu.addAction(delete)
         instrument_menu.exec(event.globalPos())
-        pass
-    
-
-
+  
     def move_up(self):
         parent_widget = self.parentWidget()
         parent_layout = parent_widget.layout()
@@ -341,7 +351,6 @@ class Instrument(QWidget):
             parent_layout.insertWidget(current_instrument_index-1, self) 
             parent_layout.insertWidget(current_instrument_index, widget_above) 
            
-
             #---------------- the other stuff
             instrument_above = self.current_project.instruments[current_instrument_index-1] 
             self.current_project.instruments[current_instrument_index-1] = self.current_project.instruments[current_instrument_index]
@@ -385,9 +394,6 @@ class Instrument(QWidget):
         self.deleteLater()
         
         
-        pass
-        
-import numpy as np
 class Preview_Screen(QLabel):
     def __init__(self, parent=None):
         super().__init__(parent) # initializes Label object
@@ -411,10 +417,10 @@ class Preview_Screen(QLabel):
             QImage.Format_RGB888
         )
         
-
         pixmap = QPixmap.fromImage(qimage)
         self.setPixmap(pixmap)
-    
+    # def refresh_frame (self, raw_):
+
     def clear_screen(self):
         self.clear()
 
@@ -427,48 +433,31 @@ class Preview_Slider(QSlider):
         self.setMaximum(100)
         self.setFixedSize(300, 200)  # Set QLabel to a fixed size
 
-        self.valueChanged.connect(lambda p: self.set_slider(p)) # lambda function is a shorter way to define function without having to define one
+        # self.valueChanged.connect(lambda p: self.set_slider(p)) # lambda function is a shorter way to define function without having to define one
     
-    def set_slider(self, p):
-        self.value = p
+    # def set_slider(self, p):
+    #     print(p)
+    #     self.value = p
+
+    # def get_slider_value(self):
+    #     return self.value
         
         # print(self.value)
         
 
             
-'''
-2024 -08-25 i made a colour class 
 
-    def set_instrument_colour(self):
-        dlg = QtWidgets.QColorDialog(self)
-        if self.instrument.colour:
-            print(self.instrument.colour)
-            dlg.setCurrentColor(QtGui.QColor(*self.instrument.colour)) #* is for unpacking into seperate arguments
-        if dlg.exec(): # returns true when user confirms selection
-            colour = dlg.currentColor()
-            rgb = (colour.red(), colour.green(), colour.blue())
-            self.instrument.colour = rgb
-            print(self.instrument.colour)
-
-        # updates bg colour for instrument wrapper    
-        self.update_bg()
-        
-
-    def update_bg(self):
-        palette = self.palette()
-        palette.setColor(QPalette.Window, QColor(*self.instrument.colour))  #  grey background
-
-        # palette.setColor(QPalette.Window, QColor("#C5C5C5"))  #  grey background
-        self.setPalette(palette)
-'''
 class Colour_Widget(QtWidgets.QColorDialog):
+    colourChanged = Signal(tuple)
+
     def __init__(self, parent):
         super().__init__()
         self.parent = parent
 
     def set_colour(self, colour, parent):
         self.colour = colour
-        parent.colour = colour    
+        parent.colour = colour 
+
 
     def show_colour_widget(self, change_colour):
         if self.parent.colour:
@@ -480,6 +469,9 @@ class Colour_Widget(QtWidgets.QColorDialog):
             self.parent.colour = rgb
             self.colour = rgb
             
+            # Emit the colorChanged signal
+            self.colourChanged.emit(rgb)
+
             # update whatever colour needs to be updated but I MIGHT DELETE THIS its messy 
             # and might not be wanted
             palette = self.palette()
@@ -490,6 +482,7 @@ class Colour_Widget(QtWidgets.QColorDialog):
             print(self.parent.colour)
 
 class Speed_Slider(QWidget):
+    speedChanged = Signal()
     def __init__(self, instrument):
         super().__init__()
 
@@ -517,6 +510,7 @@ class Speed_Slider(QWidget):
     def set_slider(self, p, instrument):
         self.speed = self.slider_values[p]
         instrument.speed = self.speed
+        self.speedChanged.emit()
         print(self.speed)
         
 
@@ -543,11 +537,3 @@ class Color(QWidget):
         self.layout.addWidget(self.name_label)
         self.setLayout(self.layout)
         
-       
-
-# app = QApplication(sys.argv)
-
-# # window = MainWindow()
-# # window.show()
-
-# app.exec()
