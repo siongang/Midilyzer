@@ -86,7 +86,7 @@ class MainWindow(QMainWindow):
     (L) {tools_container} <- (L) preview_panel <- [(W) preview_screen, (W) preview_slider]
     '''
     def setup_preview_panel(self, parent):
-        self.preview_panel = QVBoxLayout()
+        self.preview_panel = QVBoxLayout() 
         
         self.preview_screen = Preview_Screen()
         self.preview_slider = Preview_Slider()
@@ -254,67 +254,121 @@ class MainWindow(QMainWindow):
 instrument_wrapper <- Name label widget + button_wrapper
 
 '''
+import re
 class Instrument(QWidget):
     refreshPreview = Signal()
     def __init__(self, name, instrument, current_project):
         super().__init__()
-        
+        # Attributes
         self.instrument = instrument
         self.current_project = current_project
-        
-        # Setting Background Colour
+        self.name = name
+        self.safe_name = re.sub(r'[^\x20-\x7E]', '', self.name)  # Remove invalid characters
+
+
+        self.setup_ui()
+        self.setup_signals()
+
+ 
+
+    def setup_ui(self):
+        # Instrument Wdiget Background Handling
         self.setAutoFillBackground(True)
-        palette = self.palette()
-        palette.setColor(QPalette.Window, QColor(*instrument.colour))  #  grey background
+        self.update_bg_colour()
 
-        # palette.setColor(QPalette.Window, QColor("#C5C5C5"))  #  grey background
-        self.setPalette(palette)
+        # Main Layout for each Instrument
+        self.instrument_layout = QVBoxLayout()
 
+        # Label for the instrument name
+        self.instrument_name_label = QLabel(f"{self.safe_name.strip()}")
+        self.instrument_layout.addWidget(self.instrument_name_label)
 
-        # initialize speed_slider for instrument
-        self.speed_slider = Speed_Slider(self.instrument)
+        # Button Layout
+        self.button_layout = self.setup_button_layout()
+        self.instrument_layout.addLayout(self.button_layout)
 
-        # initialize colour_widget for instrument
-        self.colour_widget = Colour_Widget(self.instrument)
-        # self.colour_widget.colorChanged.connect(preview_screen.update_frame(self.current_project.generate_frame()))
-        self.instrument_wrapper = QVBoxLayout()
-        
-
-        # the label for the instrument name        
-        self.name_label = QLabel(f"{name.strip()}")
-        self.instrument_wrapper.addWidget(self.name_label)
-
-        # wrapper for all the buttons and aligning them to the left
-        self.button_wrapper = QHBoxLayout()
-        self.button_wrapper.setAlignment(Qt.AlignLeft)
-
-        '''
-        Make a class for buttons
-        '''
-
-        # colour button
-        self.colour_button = QPushButton("colour")
-        self.colour_button.setFixedWidth(70)
-        self.colour_button.clicked.connect(lambda: self.colour_widget.show_colour_widget(self))
-        
-        self.button_wrapper.addWidget(self.colour_button)
-        # speed button
-        self.speed_button = QPushButton("speed")
-        self.speed_button.setMinimumWidth(70)
-        self.speed_button.setMaximumWidth(120)
-        self.speed_button.clicked.connect(lambda: self.speed_slider.show_slider(self.speed_button)) # another lambda function
-        self.button_wrapper.addWidget(self.speed_button)
-
-        # add button wrapper to instrument wrapper
-        self.instrument_wrapper.addLayout(self.button_wrapper)
-        self.setLayout(self.instrument_wrapper)
+        # Set Layout for the Widget
+        self.setLayout(self.instrument_layout)
         self.setFixedHeight(60)
+
         
-        self.colour_widget.colourChanged.connect(self.refresh_preview)
-        self.speed_slider.speedChanged.connect(self.refresh_preview)
+
+
+    def update_bg_colour(self):
+        self.palette = self.palette()
+        self.palette.setColor(QPalette.Window, QColor(*self.instrument.colour))
+        self.setPalette(self.palette)
+
+
+    def setup_button_layout(self):
+        """
+        Creates a layout for buttons that alter instrument properties
+
+        Parameters:
+            - self: Instrument Widget
+
+        Returns:
+            -  button_layout: QHBoxLayout() 
+        """
+        button_layout = QHBoxLayout()
+        button_layout.setAlignment(Qt.AlignLeft)
+
+        self.colour_button = self.create_button("colour", lambda: self.colour_widget.show_colour_widget(self))
+        self.speed_button = self.create_button("speed", lambda: self.speed_slider.show_slider(self.speed_button))
+
+        button_layout.addWidget(self.colour_button)
+        button_layout.addWidget(self.speed_button)
+        return button_layout
     
+    def create_button(self, text, callback):
+        
+        """
+        Creates a button
+
+        Parameters:
+            - self: Instrument Widget
+            - text: Button text
+            - callback: function to call when button is clicked
+        Returns:
+            -  button: QPushButton()
+        """
+        button = QPushButton(text)
+        button.setMinimumWidth(70)
+        button.setMaximumWidth(120)
+        button.clicked.connect(callback)
+        return button
+
+    def setup_signals(self):       
+        """
+        Sets up signals 
+
+        Parameters:
+            - self: Instrument Widget
+            - text: Button text
+            - callback: function to call when button is clicked
+        Returns:
+            None
+        """
+        self.speed_slider = Speed_Slider(self.instrument)
+        self.speed_slider.speedChanged.connect(self.refresh_preview)
+        self.speed_slider.speedChanged.connect(self.update_speed_button_text)
+
+        self.colour_widget = Colour_Widget(self.instrument)
+        self.colour_widget.colourChanged.connect(self.refresh_preview)
+
+    def update_speed_button_text(self):
+        """Update the speed button text to show the current speed."""
+        self.speed_button.setText(f"speed: {self.speed_slider.speed}")
+
     def refresh_preview(self):
-        print("refresh preview")
+        """
+        Refreshes Preview by emitting a signal 
+
+        Parameters:
+            - self: Instrument Widget
+        Returns:
+            None
+        """
         self.refreshPreview.emit()
 
     def mousePressEvent(self, event):
@@ -331,9 +385,11 @@ class Instrument(QWidget):
         move_up.triggered.connect(lambda: self.move_up())
         move_down.triggered.connect(lambda: self.move_down() )
         delete.triggered.connect(lambda: self.delete())
+        # Add actions to menu
         instrument_menu.addAction(move_up)
         instrument_menu.addAction(move_down)
         instrument_menu.addAction(delete)
+        # Render Menu at Mouse Position
         instrument_menu.exec(event.globalPos())
   
     def move_up(self):
@@ -401,15 +457,20 @@ class Preview_Screen(QLabel):
         self.setScaledContents(True)
 
     def update_frame(self, raw_frame):
-        
+               
+        """
+        Updates Preview Screen with new image using qimage and pixmap
+
+        Parameters:
+            - self: Preview_Screen: QLabel()
+            - raw_frame: pg.surfarray.array3d(frame_screen)
+        Returns:
+            None
+        """     
         raw_frame = np.transpose(raw_frame, (1, 0, 2))
         raw_frame = np.ascontiguousarray(raw_frame, dtype=np.uint8)
         height, width, _ = raw_frame.shape
 
-        # raw_data = np.zeros
-        # print(raw_frame[1])
-
-        # QImage(const uchar *data, int width, int height, QImage.Format format)
         qimage = QImage(
             raw_frame.data,
             width, 
@@ -419,7 +480,7 @@ class Preview_Screen(QLabel):
         
         pixmap = QPixmap.fromImage(qimage)
         self.setPixmap(pixmap)
-    # def refresh_frame (self, raw_):
+    
 
     def clear_screen(self):
         self.clear()
@@ -431,21 +492,9 @@ class Preview_Slider(QSlider):
         super().__init__(Qt.Horizontal, parent)
         self.setMinimum(0)
         self.setMaximum(100)
-        self.setFixedSize(300, 200)  # Set QLabel to a fixed size
+        # self.setFixedSize(300, 200)  # Set QLabel to a fixed size
 
-        # self.valueChanged.connect(lambda p: self.set_slider(p)) # lambda function is a shorter way to define function without having to define one
-    
-    # def set_slider(self, p):
-    #     print(p)
-    #     self.value = p
 
-    # def get_slider_value(self):
-    #     return self.value
-        
-        # print(self.value)
-        
-
-            
 
 class Colour_Widget(QtWidgets.QColorDialog):
     colourChanged = Signal(tuple)
@@ -506,14 +555,14 @@ class Speed_Slider(QWidget):
         instrument.speed = self.speed
 
         self.speed_slider.valueChanged.connect(lambda p: self.set_slider(p, instrument)) # lambda function to take in multipel arguments still a bit confused
-    
+
     def set_slider(self, p, instrument):
         self.speed = self.slider_values[p]
         instrument.speed = self.speed
         self.speedChanged.emit()
         print(self.speed)
         
-
+    
     def show_slider(self, button):
         # print("show slider")
         self.speed_slider.value = self.speed
