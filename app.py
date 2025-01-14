@@ -265,11 +265,9 @@ class Instrument(QWidget):
         self.name = name
         self.safe_name = re.sub(r'[^\x20-\x7E]', '', self.name)  # Remove invalid characters
 
-
         self.setup_ui()
         self.setup_signals()
 
- 
 
     def setup_ui(self):
         # Instrument Wdiget Background Handling
@@ -492,7 +490,7 @@ class Preview_Slider(QSlider):
         super().__init__(Qt.Horizontal, parent)
         self.setMinimum(0)
         self.setMaximum(100)
-        # self.setFixedSize(300, 200)  # Set QLabel to a fixed size
+       
 
 
 
@@ -586,3 +584,6 @@ class Color(QWidget):
         self.layout.addWidget(self.name_label)
         self.setLayout(self.layout)
         
+
+class Button(QPushButton):
+    pass

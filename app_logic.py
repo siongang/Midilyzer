@@ -87,10 +87,14 @@ class AppLogic():
         self.set_display_height(720)
         self.set_starting_position(1000)
         self.set_note_length(120)
+
         self.set_line_x(600)
+        self.set_line_colour((225,225,225))
+        self.set_line_width(5)
+        self.set_line_height(720)
+        
         self.set_colour(bg_colour_2)
 
-    #P
     def process_midi(self):
         
         #setting initial bpm, its just for note generation not too important
@@ -158,7 +162,12 @@ class AppLogic():
 
     def set_line_x(self, line_x):
         self.line_x = line_x
-
+    def set_line_colour(self, line_colour):
+        self.line_colour = line_colour
+    def set_line_width(self, line_width):
+        self.line_width = line_width
+    def set_line_height(self, line_height):
+        self.line_height = line_height
 
     def generate_vid(self):
         pg.quit()
@@ -258,15 +267,13 @@ class AppLogic():
                     # print("rectangle")
                     # print(note)
         
-            pg.display.update()
             
             # the line
             line_start = (self.line_x,0)
-            line_end = (self.line_x,720)
-            line_width = 5
-            line_colour = (225,225,225)
-            pg.draw.line(screen, line_colour, line_start, line_end, line_width)
+            line_end = (self.line_x,self.line_height)
+            pg.draw.line(screen, self.line_colour, line_start, line_end, self.line_width)
 
+            pg.display.update()
 
 
             vid.vid_generator(screen)
@@ -333,6 +340,11 @@ class AppLogic():
                 pg.draw.rect(frame_screen, rect_color, (rect_x, rect_y, rect_width, rect_height))
                 # pg.display.update(pg.Rect(rect_x, rect_y, rect_width, rect_height))
 
+        # the line
+        line_start = (self.line_x,0)
+        line_end = (self.line_x,self.line_height)
+        
+        pg.draw.line(frame_screen, self.line_colour, line_start, line_end, self.line_width)
         # raw_frame = pg.image.tostring(frame_screen, "RGB")
         raw_frame = pg.surfarray.array3d(frame_screen)
            
